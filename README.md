@@ -1,24 +1,507 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AuthSystemPro
+
+A complete, production-ready authentication system built with Next.js 15, Prisma, and PostgreSQL featuring:
+
+- Email/Password authentication with email verification
+- Two-factor authentication with OTP codes
+- Password reset functionality
+- Rate limiting and security features
+- Audit logging
+- Session management
+- Modern UI with Radix UI components
+
+## Features
+
+- 🔐 **Secure Authentication**: Bcrypt password hashing, OTP verification
+- � **Multi-User Support**: Concurrent user sessions with proper isolation
+- 🎭 **Role-Based Access Control (RBAC)**: 10 predefined roles with granular permissions
+- 🔒 **Granular Permissions**: 60+ permissions with `.own` vs `.all` access control
+- 📧 **Email Verification**: Email verification with token-based system
+- 🔑 **Password Reset**: Secure password reset flow with tokens
+- 🛡️ **Enhanced Security**: Session isolation, audit logs, account locking, MFA support
+- 🚦 **Rate Limiting**: Protect endpoints from abuse
+- 🎨 **Modern UI**: Built with Radix UI and Tailwind CSS
+- 📱 **Responsive**: Mobile-friendly design
+- 🗄️ **Database**: PostgreSQL with Prisma ORM
+- 🚀 **Type-safe**: Full TypeScript support
+
+## Prerequisites
+
+- Node.js 18+
+- PostgreSQL database
+- Redis (for rate limiting)
+- SMTP server or Resend API key (for emails)
 
 ## Getting Started
 
-First, run the development server:
+### Quick Setup (Windows PowerShell)
+
+```powershell
+# Run the setup script
+.\setup.ps1
+```
+
+This will:
+
+1. Check if `.env` file exists and prompt to configure it
+2. Install dependencies
+3. Generate Prisma Client
+4. Run database migrations
+
+### Manual Setup
+
+#### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+#### 2. Environment Setup
+
+Create a `.env` file in the project root with your credentials:
+
+```env
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/authsystempro"
+PRISMA_ACCELERATE_URL=""  # Optional: For Prisma Accelerate
+
+# Node Environment
+NODE_ENV="development"
+
+# App URL
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# JWT/Session Secrets (Generate secure random strings)
+JWT_SECRET="your-super-secret-jwt-key-min-32-chars"
+SESSION_SECRET="your-super-secret-session-key-min-32-chars"
+
+# Redis (for rate limiting)
+REDIS_URL="redis://localhost:6379"
+
+# Email - SMTP Configuration
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-app-password"
+FROM_EMAIL="your-email@gmail.com"  # Email sender address
+
+# Email - Resend API (Alternative to SMTP)
+RESEND_API_KEY="re_your_api_key"
+
+# SMS - Africa's Talking (Optional)
+AT_API_KEY="your_africastalking_api_key"
+AT_USERNAME="your_africastalking_username"
+AT_NUMBER="your_shortcode_or_number"
+
+# Optional: Sentry Error Tracking
+# SENTRY_DSN="your_sentry_dsn"
+```
+
+#### 3. Database Setup
+
+```bash
+# Generate Prisma Client
+npx prisma generate
+
+# Run migrations
+npx prisma migrate dev
+
+# Seed database (creates roles, permissions, and default admin user)
+npx prisma db seed
+```
+
+#### 4. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see your app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Default Admin User
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+After running the seed script, a default admin user is created:
+
+- **Email**: chogodad@gmail.com
+- **Password**: 1949Kahuya
+- **Role**: SUPER_ADMIN (with full system control)
+
+⚠️ **Important**: Change the default admin password immediately after first login in production!
+
+## Project Structure
+
+```
+authsystempro/
+├── src/
+│   ├── app/                    # Next.js app directory
+│   │   ├── api/               # API routes
+│   │   │   ├── auth/          # Authentication endpoints
+│   │   │   └── logout/        # Logout endpoint
+│   │   ├── authpage/          # Authentication pages
+│   │   │   ├── signin/        # Sign in page
+│   │   │   ├── signup/        # Sign up page
+│   │   │   ├── forgot/        # Forgot password
+│   │   │   ├── otp/           # OTP verification
+│   │   │   ├── reset-password/# Password reset
+│   │   │   └── verify-email/  # Email verification
+│   │   └── dashboard/         # Protected dashboard
+│   ├── components/            # React components
+│   │   ├── AuthForm.tsx       # Main auth form component
+│   │   └── ui/                # UI components (Radix)
+│   ├── lib/                   # Utility libraries
+│   │   ├── authService.ts     # Auth API client
+│   │   ├── hash.ts            # Password hashing
+│   │   ├── otp.ts             # OTP generation/verification
+│   │   ├── tokens.ts          # Token management
+│   │   ├── send.ts            # Email sending
+│   │   ├── rateLimit.ts       # Rate limiting
+│   │   └── errors.ts          # Error handling
+│   ├── services/              # Backend services
+│   │   └── prismaService.ts   # Prisma client instance
+	├── generated/             # Generated Prisma types
+	├── hooks/                 # Custom React hooks
+	│   └── use-auth.ts        # Authentication hooks
+	└── middleware.ts          # Next.js route protection
+└── prisma/
+    ├── schema.prisma          # Database schema
+    └── migrations/            # Database migrations
+```
+
+## Authentication Flow
+
+### Sign Up Flow
+
+1. User submits registration form
+2. Password is hashed with bcrypt
+3. User record created in database
+4. Verification email sent with token
+5. User clicks link in email
+6. Email verified, user can sign in
+
+### Sign In Flow
+
+1. User submits credentials
+2. Password verified against hash
+3. OTP code generated and sent via email
+4. User enters OTP code
+5. Session token created and stored
+6. User redirected to dashboard
+
+### Password Reset Flow
+
+1. User requests password reset
+2. Reset token generated and sent via email
+3. User clicks link and enters new password
+4. Password updated in database
+5. Reset token marked as used
+
+## Route Protection
+
+The application uses Next.js middleware for automatic route protection:
+
+### Protected Routes
+
+- `/dashboard` - Requires authentication, redirects to signin if not authenticated
+
+### Auth Routes
+
+- `/authpage/signin`, `/authpage/signup`, etc. - Redirects to dashboard if already authenticated
+
+### Middleware Configuration
+
+Located in `src/middleware.ts`, the middleware:
+
+- Checks for `authToken` cookie
+- Redirects unauthenticated users from protected routes to signin
+- Redirects authenticated users from auth pages to dashboard
+- Preserves the original destination URL for post-login redirect
+
+### Client-Side Protection
+
+Additionally, protected pages use the `useRequireAuth()` hook for client-side verification:
+
+```typescript
+import { useRequireAuth } from "@/hooks/use-auth";
+
+export default function ProtectedPage() {
+  useRequireAuth(); // Ensures user is authenticated
+  // ... rest of component
+}
+```
+
+### Adding New Protected Routes
+
+To protect a new route, add it to the `protectedRoutes` array in `src/middleware.ts`:
+
+```typescript
+const protectedRoutes = ["/dashboard", "/profile", "/settings"];
+```
+
+## Roles & Permissions System
+
+### Role Hierarchy
+
+The system includes 10 predefined roles with increasing levels of access:
+
+1. **SUPER_ADMIN** - Full system control, all permissions
+2. **ADMIN** - Platform-level administration
+3. **SECURITY_ADMIN** - Security, audit, and session management
+4. **MANAGER** - User and content management
+5. **MODERATOR** - Content moderation and user management
+6. **EDITOR** - Content creation and publishing
+7. **SUPPORT** - User support and assistance
+8. **CONTRIBUTOR** - Create and manage own content
+9. **USER** - Standard user with basic permissions
+10. **GUEST** - Limited read-only access
+
+### Permission Categories
+
+#### Authentication & Session Management
+
+- `session.read.own` / `session.read.all` - View own or all sessions
+- `session.terminate.own` / `session.terminate.all` - End sessions
+- `auth.login`, `auth.logout`, `auth.mfa` - Authentication actions
+
+#### User Management
+
+- `user.read.own` / `user.read.all` - View user profiles
+- `user.update.own` - Update own profile
+- `user.create`, `user.update`, `user.delete` - Manage users
+- `user.assign-role` - Assign roles to users
+- `user.lock` - Lock/unlock accounts
+- `user.impersonate` - Impersonate other users (admin)
+- `user.export` - Export user data
+
+#### Content Management
+
+- `content.read.own` / `content.read.all` - Read content
+- `content.create`, `content.update.own` - Create and edit content
+- `content.delete.own` / `content.delete` - Delete content
+- `content.publish` - Publish content
+- `content.moderate` - Moderate user content
+- `media.upload`, `media.delete.own` - Manage media
+
+#### System Administration
+
+- `system.read`, `system.update` - System settings
+- `system.audit` - View audit logs
+- `system.security` - Security configuration
+- `system.backup` - System backups
+
+#### Role & Permission Management
+
+- `role.read`, `role.create`, `role.update`, `role.delete`
+- `permission.read`, `permission.assign`, `permission.manage`
+
+### Concurrent User Sessions
+
+The system supports **multiple users logged in simultaneously** with:
+
+- **Session Isolation**: Each user's session is independent
+- **Own vs All Permissions**: Users can only access their own data unless granted elevated permissions
+- **Concurrent Safety**: Multiple users can perform actions at the same time without conflicts
+- **Audit Trail**: All actions are logged with user attribution
+- **Security Boundaries**: Strict permission checks prevent unauthorized access
+
+### Example Role Permissions
+
+**USER Role**:
+
+```typescript
+✓ Read own content
+✓ Create content
+✓ Update own profile
+✓ Upload media
+✓ View and manage own sessions
+✗ Cannot view other users' data
+✗ Cannot delete others' content
+```
+
+**EDITOR Role**:
+
+```typescript
+✓ All USER permissions
+✓ Read all content
+✓ Publish content
+✓ Create and edit content
+✗ Cannot manage users
+✗ Cannot access system settings
+```
+
+**ADMIN Role**:
+
+```typescript
+✓ All EDITOR permissions
+✓ Manage all users
+✓ Assign roles
+✓ View all sessions
+✓ Access system settings
+✓ View audit logs
+✗ Cannot access security configuration
+```
+
+## API Endpoints
+
+### Authentication
+
+- `POST /api/auth/signup` - Register new user
+- `POST /api/auth/signin` - Sign in (sends OTP)
+- `POST /api/auth/verify-otp` - Verify OTP code
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset password with token
+- `POST /api/auth/validate-reset-token` - Validate reset token
+- `POST /api/auth/verify-email` - Verify email with token
+- `POST /api/auth/resend-verification` - Resend verification email
+- `POST /api/auth/resend-otp` - Resend OTP code
+- `POST /api/logout` - Sign out user
+- `GET /api/profile` - Get current user profile
+
+## Security Features
+
+### Authentication & Access Control
+
+- ✅ Password hashing with bcrypt (12 rounds)
+- ✅ Two-factor authentication via OTP
+- ✅ Email verification required
+- ✅ Secure password reset with expiring tokens
+- ✅ Role-Based Access Control (RBAC) with 10 roles
+- ✅ Granular permissions (60+ permissions)
+- ✅ Permission-based authorization (`requirePermission`)
+
+### Session & User Management
+
+- ✅ Concurrent multi-user session support
+- ✅ Session isolation (users can't access others' sessions)
+- ✅ Session management with JWT tokens
+- ✅ Account locking capabilities
+- ✅ User impersonation (admin only)
+- ✅ HTTP-only cookies for token storage
+
+### Security Monitoring
+
+- ✅ Rate limiting on all auth endpoints
+- ✅ Login attempt tracking
+- ✅ Comprehensive audit logging
+- ✅ Security event monitoring
+- ✅ Failed login detection
+
+### Data Protection
+
+- ✅ Input validation with Zod
+- ✅ CSRF protection
+- ✅ Route protection middleware (SSR + client-side)
+- ✅ Own vs All permission separation
+- ✅ Data export controls
+
+## Technologies Used
+
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **Caching**: Redis for rate limiting
+- **UI**: Radix UI + Tailwind CSS
+- **Forms**: React Hook Form + Zod
+- **Authentication**: Custom implementation
+- **Email**: Nodemailer (SMTP) or Resend API
+
+## Development
+
+### Run Development Server
+
+```bash
+npm run dev
+```
+
+### Build for Production
+
+```bash
+npm run build
+npm start
+```
+
+### Database Commands
+
+```bash
+# View database in Prisma Studio
+npx prisma studio
+
+# Create new migration
+npx prisma migrate dev --name <migration-name>
+
+# Reset database
+npx prisma migrate reset
+
+# Generate Prisma Client
+npx prisma generate
+```
+
+## Environment Variables
+
+### Required Variables
+
+| Variable              | Description                          | Required | Default |
+| --------------------- | ------------------------------------ | -------- | ------- |
+| `DATABASE_URL`        | PostgreSQL connection string         | Yes      | -       |
+| `NODE_ENV`            | Environment (development/production) | Yes      | -       |
+| `NEXT_PUBLIC_APP_URL` | Application URL                      | Yes      | -       |
+| `JWT_SECRET`          | JWT signing secret (min 32 chars)    | Yes      | -       |
+| `SESSION_SECRET`      | Session encryption secret            | Yes      | -       |
+| `REDIS_URL`           | Redis connection string              | Yes      | -       |
+
+### Email Configuration (Choose One)
+
+**Option 1: SMTP**
+
+| Variable     | Description           | Required |
+| ------------ | --------------------- | -------- |
+| `SMTP_HOST`  | SMTP server hostname  | Yes\*    |
+| `SMTP_PORT`  | SMTP server port      | Yes\*    |
+| `SMTP_USER`  | SMTP username/email   | Yes\*    |
+| `SMTP_PASS`  | SMTP password/app key | Yes\*    |
+| `FROM_EMAIL` | Sender email address  | Yes\*    |
+
+**Option 2: Resend API**
+
+| Variable         | Description    | Required |
+| ---------------- | -------------- | -------- |
+| `RESEND_API_KEY` | Resend API key | Yes\*    |
+| `FROM_EMAIL`     | Sender email   | Yes\*    |
+
+\* Either configure SMTP or Resend for emails
+
+### Optional Variables
+
+| Variable                | Description                  | Required | Default |
+| ----------------------- | ---------------------------- | -------- | ------- |
+| `PRISMA_ACCELERATE_URL` | Prisma Accelerate connection | No       | -       |
+| `AT_API_KEY`            | Africa's Talking API key     | No       | -       |
+| `AT_USERNAME`           | Africa's Talking username    | No       | -       |
+| `AT_NUMBER`             | Africa's Talking shortcode   | No       | -       |
+| `SENTRY_DSN`            | Sentry error tracking DSN    | No       | -       |
+
+## Troubleshooting
+
+### Email not sending
+
+- Check SMTP credentials in `.env`
+- For Gmail, use an App Password
+- Alternatively, use Resend API
+
+### Database connection errors
+
+- Ensure PostgreSQL is running
+- Verify `DATABASE_URL` is correct
+- Check network connectivity
+
+### Rate limiting issues
+
+- Ensure Redis is running
+- Verify `REDIS_URL` is correct
+- Check Redis connection
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Learn More
 
