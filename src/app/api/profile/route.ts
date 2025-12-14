@@ -12,10 +12,17 @@ export const GET = errorHandler(
     requireAuth(async (req: Request) => {
       const ctx = getAuthContext(req)
       if (!ctx?.user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      const url = new URL(req.url)
+      const targetUserId = url.searchParams.get('userId')
+
+      // Allow SUPER_ADMIN to view any user's profile via ?userId=... or default to current user
+      const idToFetch = targetUserId && ctx.roles.includes('SUPER_ADMIN') ? targetUserId : ctx.user.id
+
       const user = await prisma.user.findUnique({
-        where: { id: ctx.user.id },
-        select: { id: true, email: true, fullName: true, username: true, phone: true, emailVerified: true, createdAt: true }
+        where: { id: idToFetch },
+        select: { id: true, email: true, fullName: true, username: true, phone: true, emailVerified: true, createdAt: true, deletedAt: true }
       })
+      if (!user) return NextResponse.json({ message: 'User not found' }, { status: 404 })
       return NextResponse.json({ ok: true, user })
     })
   )

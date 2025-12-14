@@ -51,9 +51,11 @@ async function main() {
     { name: 'role.read', description: 'Read roles' },
     { name: 'role.create', description: 'Create roles' },
     { name: 'role.update', description: 'Update roles' },
+    { name: 'role.manage', description: 'Manage roles and assignments' },
     { name: 'role.delete', description: 'Delete roles' },
     { name: 'permission.read', description: 'Read permissions' },
     { name: 'permission.assign', description: 'Assign permissions to roles' },
+    { name: 'audit.read', description: 'Read and query audit logs' },
     { name: 'permission.manage', description: 'Manage permissions' },
 
     // System Settings & Security
@@ -172,6 +174,7 @@ async function main() {
       'user.read.all', 'user.create', 'user.update', 'user.delete', 
       'user.assign-role', 'user.view-sensitive', 'user.lock', 'user.export',
       'role.read', 'role.create', 'role.update', 'role.delete',
+      'role.manage',
       'permission.read', 'permission.assign',
       'content.read.all', 'content.create', 'content.update', 'content.delete',
       'content.publish', 'content.moderate',

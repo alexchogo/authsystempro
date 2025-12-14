@@ -1,10 +1,9 @@
 import prisma from '@/services/prismaService'
-import type { Prisma } from '@/generated/prisma'
 
 export async function logAuditEvent(
-  action: Prisma.AuditAction,
+  action: string,
   userId?: string,
-  metadata: Prisma.InputJsonValue = {},
+  metadata: any = {},
   ipAddress?: string,
   userAgent?: string
 ) {
@@ -12,7 +11,7 @@ export async function logAuditEvent(
     await prisma.auditLog.create({
       data: {
         userId,
-        action,
+        action: action as any,
         ipAddress,
         userAgent,
         metadata: metadata ?? null
