@@ -107,7 +107,11 @@ npx prisma generate
 npx prisma migrate dev
 
 # Seed database (creates roles, permissions, and default admin user)
-npx prisma db seed
+# The seed script reads admin credentials from your environment variables.
+# Copy `.env.example` to `.env` and set at minimum `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+npx ts-node prisma/seed.ts
+# (Alternative) If you prefer to use Prisma's seed hook, configure it to run the same script
+# and then run: npx prisma db seed
 ```
 
 #### 4. Run Development Server
@@ -118,53 +122,63 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to see your app.
 
-### Default Admin User
+## Default Admin User
 
-After running the seed script, a default admin user is created:
+The seed script now creates the default `SUPER_ADMIN` user from environment variables instead of hard-coded credentials.
 
-- **Email**: chogodad@gmail.com
-- **Password**: 1949Kahuya
-- **Role**: SUPER_ADMIN (with full system control)
+- Required env vars for the seed: `ADMIN_EMAIL`, `ADMIN_PASSWORD`
+- Optional env vars: `ADMIN_FULLNAME`, `ADMIN_USERNAME`, `ADMIN_PHONE`, `BCRYPT_SALT_ROUNDS` (defaults to `10`)
 
-⚠️ **Important**: Change the default admin password immediately after first login in production!
+Example (copy `.env.example` to `.env` and edit):
+
+```env
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=ChangeMeToAStrongPassword123!
+ADMIN_FULLNAME="Alex Chogo"
+ADMIN_USERNAME=alexchogo
+ADMIN_PHONE=+254728931154
+BCRYPT_SALT_ROUNDS=10
+```
+
+Run the seed after configuring `.env`:
+
+```bash
+npx ts-node prisma/seed.ts
+```
+
+⚠️ Important: use a strong, unique password for `ADMIN_PASSWORD` in production and rotate credentials after first login.
 
 ## Project Structure
 
 ```
 authsystempro/
 ├── src/
-│   ├── app/                    # Next.js app directory
-│   │   ├── api/               # API routes
-│   │   │   ├── auth/          # Authentication endpoints
-│   │   │   └── logout/        # Logout endpoint
-│   │   ├── authpage/          # Authentication pages
-│   │   │   ├── signin/        # Sign in page
-│   │   │   ├── signup/        # Sign up page
-│   │   │   ├── forgot/        # Forgot password
-│   │   │   ├── otp/           # OTP verification
-│   │   │   ├── reset-password/# Password reset
-│   │   │   └── verify-email/  # Email verification
-│   │   └── dashboard/         # Protected dashboard
-│   ├── components/            # React components
-│   │   ├── AuthForm.tsx       # Main auth form component
-│   │   └── ui/                # UI components (Radix)
-│   ├── lib/                   # Utility libraries
-│   │   ├── authService.ts     # Auth API client
-│   │   ├── hash.ts            # Password hashing
-│   │   ├── otp.ts             # OTP generation/verification
-│   │   ├── tokens.ts          # Token management
-│   │   ├── send.ts            # Email sending
-│   │   ├── rateLimit.ts       # Rate limiting
-│   │   └── errors.ts          # Error handling
-│   ├── services/              # Backend services
-│   │   └── prismaService.ts   # Prisma client instance
-	├── generated/             # Generated Prisma types
-	├── hooks/                 # Custom React hooks
-	│   └── use-auth.ts        # Authentication hooks
-	└── middleware.ts          # Next.js route protection
-└── prisma/
-    ├── schema.prisma          # Database schema
-    └── migrations/            # Database migrations
+│   ├── app/                    # Next.js App Router
+│   │   ├── api/                # API routes (auth, profile, avatar, etc.)
+│   │   ├── authpage/           # Authentication pages (signin, signup, forgot, otp, reset-password, verify-email)
+│   │   ├── dashboard/          # Protected application UI (profile, activity, admin)
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/             # Reusable React components
+│   │   ├── AvatarUpload.tsx
+│   │   ├── IdleLogout.tsx
+│   │   ├── Providers.tsx
+│   │   └── ui/                 # UI primitives and Radix wrappers
+│   ├── generated/              # Generated Prisma client/types
+│   ├── hooks/                  # Custom React hooks
+│   │   └── use-auth.ts
+│   ├── lib/                    # Utility libraries and services (authService, tokens, send, redis, etc.)
+│   ├── services/               # Backend services (prismaService, role.service, session.service)
+│   └── middleware.ts           # Route protection and redirects
+├── prisma/                     # Prisma schema and migrations
+│   ├── schema.prisma
+│   └── migrations/
+├── public/                     # Static assets (avatars, images)
+├── scripts/                    # Utility scripts (e.g., email-test.ts)
+├── .env.example                # Example env file
+├── package.json
+└── README.md
 ```
 
 ## Authentication Flow
@@ -398,6 +412,24 @@ The system supports **multiple users logged in simultaneously** with:
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
 - **Database**: PostgreSQL with Prisma ORM
+
+**Dependencies**
+
+Below are the main runtime and development dependencies used in this project (see `package.json` for full list and versions):
+
+- **Framework & Core**: `next`, `react`, `react-dom`
+- **Database & ORM**: `prisma`, `@prisma/client`, `@prisma/adapter-pg`, `pg`
+- **Authentication & Security**: `bcrypt` / `bcryptjs`, `jsonwebtoken`, `iron-session`, `speakeasy`, `otp-generator`, `argon2`
+- **Email & Messaging**: `nodemailer`, `@react-email/render`, `@react-email/components`, `africastalking`
+- **Caching / Rate Limiting**: `ioredis`, `express-rate-limit`
+- **UI & Styling**: `tailwindcss`, `shadcn-ui`, `@radix-ui/*` packages, `framer-motion`, `@chakra-ui/react`, `@emotion/react`, `@emotion/styled`
+- **State & Data Fetching**: `@tanstack/react-query`, `zustand`, `react-hook-form`, `@tanstack/react-table`
+- **Utilities & Validation**: `axios`, `date-fns`, `zod`, `uuid`, `nanoid`, `validator`, `clsx`
+- **Logging & Monitoring**: `pino`, `pino-pretty`, `@sentry/nextjs`
+- **Dev / Build Tools**: `typescript`, `ts-node`, `prisma`, `eslint`, `prettier`, `jest`, `tailwindcss`, `postcss`
+
+Tip: run `npm ls --depth=0` to view installed top-level packages locally, or open `package.json` for exact versions.
+
 - **Caching**: Redis for rate limiting
 - **UI**: Radix UI + Tailwind CSS
 - **Forms**: React Hook Form + Zod

@@ -193,7 +193,7 @@ export default function DashboardPage() {
       <IdleLogout timeoutMs={15 * 60 * 1000} />
       <div className="mx-auto flex max-w-6xl flex-col gap-6 p-4 md:flex-row md:p-8">
         {/* Sidebar */}
-        <Card className="md:w-64 md:shrink-0 md:sticky md:top-6 h-fit">
+        <Card className="md:w-64 md:shrink-0 md:sticky md:top-6 md:order-last h-fit">
           <CardHeader>
             <CardTitle className="flex items-center justify-between text-base">
               Dashboard
