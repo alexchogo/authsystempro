@@ -275,21 +275,34 @@ async function main() {
   // ===============================
   // 5️⃣ DEFAULT ADMIN USER
   // ===============================
-  const adminEmail = 'chogodad@gmail.com';
+  // Load admin credentials from environment variables
+  const {
+    ADMIN_EMAIL,
+    ADMIN_PASSWORD,
+    ADMIN_PHONE,
+    ADMIN_FULLNAME,
+    ADMIN_USERNAME,
+    BCRYPT_SALT_ROUNDS,
+  } = process.env;
+
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+    throw new Error('Missing required environment variables: ADMIN_EMAIL and ADMIN_PASSWORD');
+  }
 
   const existingAdmin = await prisma.user.findUnique({
-    where: { email: adminEmail },
+    where: { email: ADMIN_EMAIL },
   });
 
   if (!existingAdmin) {
-    const hashedPassword = await bcrypt.hash('1949Kahuya', 10);
+    const saltRounds = parseInt(BCRYPT_SALT_ROUNDS || '10', 10);
+    const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, saltRounds);
 
     const newAdmin = await prisma.user.create({
       data: {
-        fullName: 'Alex Chogo',
-        username: 'alexchogo',
-        email: adminEmail,
-        phone: '+254728931154',
+        fullName: ADMIN_FULLNAME || 'Alex Chogo',
+        username: ADMIN_USERNAME || 'alexchogo',
+        email: ADMIN_EMAIL,
+        phone: ADMIN_PHONE || '+254728931154',
         password: hashedPassword,
         emailVerified: true,
       },
@@ -308,9 +321,9 @@ async function main() {
         roleId: superAdminRole!.id,
       },
     });
-    console.log(`👑 Created default SUPER_ADMIN: ${adminEmail}`);
+    console.log(`👑 Created default SUPER_ADMIN: ${ADMIN_EMAIL}`);
   } else {
-    console.log(`Admin already exists: ${adminEmail}`);
+    console.log(`Admin already exists: ${ADMIN_EMAIL}`);
   }
 
   console.log('✅ Seed completed successfully!');

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Card,
@@ -78,10 +78,42 @@ export default function DashboardPage() {
     []
   )
 
+  const ids = navItems.map((n) => n.id)
+
   const handleNavClick = (id: string) => {
     setActiveSection(id)
-    const el = document.getElementById(id)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const lastScrollAt = useRef(0)
+  const touchStartY = useRef<number | null>(null)
+
+  const changeSectionBy = useCallback((delta: number) => {
+    const cur = Math.max(0, ids.indexOf(activeSection))
+    const next = Math.min(ids.length - 1, Math.max(0, cur + delta))
+    const nextId = ids[next]
+    if (nextId && nextId !== activeSection) setActiveSection(nextId)
+  }, [activeSection, ids])
+
+  const onWheel: React.WheelEventHandler = (e) => {
+    const now = Date.now()
+    if (now - lastScrollAt.current < 600) return
+    if (Math.abs(e.deltaY) < 20) return
+    lastScrollAt.current = now
+    changeSectionBy(e.deltaY > 0 ? 1 : -1)
+  }
+
+  const onTouchStart: React.TouchEventHandler = (e) => {
+    touchStartY.current = e.touches[0]?.clientY ?? null
+  }
+
+  const onTouchEnd: React.TouchEventHandler = (e) => {
+    const start = touchStartY.current
+    touchStartY.current = null
+    if (start == null) return
+    const end = e.changedTouches[0]?.clientY ?? start
+    const diff = start - end
+    if (Math.abs(diff) < 30) return
+    changeSectionBy(diff > 0 ? 1 : -1)
   }
 
   // Persist preferences locally
@@ -194,7 +226,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Main content */}
-        <div className="flex-1 space-y-8">
+        <div className="flex-1 space-y-8" onWheel={onWheel} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Welcome back</p>
@@ -210,7 +242,8 @@ export default function DashboardPage() {
             </div>
           </header>
 
-          <section id="overview" className="space-y-4 scroll-m-20">
+          {activeSection === 'overview' && (
+            <section id="overview" className="space-y-4 scroll-m-20">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {summary.map((item) => (
                 <Card key={item.label}>
@@ -224,9 +257,11 @@ export default function DashboardPage() {
                 </Card>
               ))}
             </div>
-          </section>
+            </section>
+          )}
 
-          <section id="profile" className="space-y-4 scroll-m-20">
+          {activeSection === 'profile' && (
+            <section id="profile" className="space-y-4 scroll-m-20">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Profile</h2>
@@ -239,9 +274,11 @@ export default function DashboardPage() {
                 <UserProfile />
               </CardContent>
             </Card>
-          </section>
+            </section>
+          )}
 
-          <section id="security" className="space-y-4 scroll-m-20">
+          {activeSection === 'security' && (
+            <section id="security" className="space-y-4 scroll-m-20">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Security</h2>
@@ -280,9 +317,11 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </section>
+            </section>
+          )}
 
-          <section id="notifications" className="space-y-4 scroll-m-20">
+          {activeSection === 'notifications' && (
+            <section id="notifications" className="space-y-4 scroll-m-20">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Notifications</h2>
@@ -320,9 +359,11 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </section>
+            </section>
+          )}
 
-          <section id="activity" className="space-y-4 scroll-m-20">
+          {activeSection === 'activity' && (
+            <section id="activity" className="space-y-4 scroll-m-20">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Recent activity</h2>
@@ -346,7 +387,8 @@ export default function DashboardPage() {
                 ))}
               </CardContent>
             </Card>
-          </section>
+            </section>
+          )}
         </div>
       </div>
     </div>
